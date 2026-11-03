@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entacritic - 엔트리 작품 전문 평점 서비스</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 아이콘 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        metagreen: '#00ce7a',
+                        metayellow: '#ffbd3f',
+                        metared: '#ff6874',
+                        metadark: '#000000',
+                        metabg: '#ffffff',
+                        metacard: '#f4f4f5',
+                        metayellowbrand: '#ffcc00'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .meta-badge-square {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            border-radius: 6px;
+            color: #242424;
+        }
+        .user-badge-square {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            border-radius: 6px;
+            color: #242424;
+        }
+        .score-green { background-color: #00ce7a; color: #242424; }
+        .score-yellow { background-color: #ffbd3f; color: #242424; }
+        .score-red { background-color: #FF6874; color: #242424; }
+        .score-none { background-color: #e4e4e7; color: #242424; }
+    </style>
+</head>
+<body class="bg-white text-zinc-900 font-sans min-h-screen flex flex-col antialiased">
+
+    <!-- 상단 네비게이션 헤더 -->
+    <header class="bg-black border-b border-zinc-800 text-white sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-6">
+                <a href="#" onclick="showHomePage()" class="flex items-center gap-2.5 group">
+                    <div class="w-8 h-8 rounded-full border-[3px] border-[#ffcc00] bg-[#18181b] flex items-center justify-center font-black text-white text-sm tracking-tighter shadow-sm group-hover:scale-105 transition">
+                        E
+                    </div>
+                    <span class="text-xl font-black tracking-tight text-white">Entacritic</span>
+                </a>
+                
+                <nav class="hidden md:flex items-center gap-5 text-xs font-bold text-zinc-300">
+                    <button onclick="filterCategory('전체')" class="hover:text-metagreen transition">전체</button>
+                    <button onclick="filterCategory('게임')" class="hover:text-metagreen transition">새로 나온 작품</button>
+                    <button onclick="filterCategory('생활과 도구')" class="hover:text-metagreen transition">생활과 도구</button>
+                    <button onclick="filterCategory('스토리텔링')" class="hover:text-metagreen transition">스토리텔링</button>
+                    <button onclick="filterCategory('예술')" class="hover:text-metagreen transition">예술</button>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="relative hidden sm:block w-48 lg:w-64">
+                    <input type="text" id="searchInput" onkeyup="handleSearch()" placeholder="작품 또는 제작자 검색..."
+                        class="w-full bg-zinc-900 border border-zinc-700 rounded-md pl-3 pr-8 py-1.5 text-xs text-white focus:outline-none focus:border-metagreen">
+                    <i class="fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-xs"></i>
+                </div>
+
+                <button onclick="openNewProjectModal()" class="bg-metagreen hover:bg-emerald-400 text-black font-extrabold text-xs px-3.5 py-1.5 rounded transition shadow-sm">
+                    + 작품 등록
+                </button>
+
+                <div id="userAccountContainer">
+                    <!-- 로그인 상태 동적 렌더링 -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-6">
+        <!-- 메인 목록 페이지 -->
+        <section id="homePage" class="space-y-6">
+            <div class="flex items-center justify-between border-b border-zinc-200 pb-3">
+                <h2 class="text-2xl font-black text-zinc-900 tracking-tight">주목할 만한 신규 작품</h2>
+                <div class="flex items-center gap-3">
+                    <span id="categoryLabel" class="text-xs font-bold text-zinc-500">카테고리: 전체</span>
+                    <select id="sortSelect" onchange="handleSortChange(this.value)" class="bg-white border border-zinc-300 rounded px-2.5 py-1 text-xs font-bold text-zinc-700 shadow-sm">
+                        <option value="latest">최신순</option>
+                        <option value="highest">최고 평점순</option>
+                        <option value="lowest">최저 평점순</option>
+                        <option value="reviews">리뷰 많은순</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="projectsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- 카드 동적 삽입 -->
+            </div>
+        </section>
+
+        <!-- 작품 상세 페이지 -->
+        <section id="detailPage" class="hidden space-y-6">
+            <button onclick="showHomePage()" class="inline-flex items-center gap-2 text-xs font-bold text-zinc-600 hover:text-black transition">
+                <i class="fa-solid fa-chevron-left"></i> 목록으로 돌아가기
+            </button>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="w-full h-80 sm:h-[420px] bg-black rounded-2xl overflow-hidden relative shadow-lg flex items-center justify-center border border-zinc-200">
+                        <img id="detailImage" src="" class="w-full h-full object-cover">
+                    </div>
+
+                    <div class="bg-zinc-50 border border-zinc-200 rounded-2xl p-6 space-y-4 shadow-sm">
+                        <div class="flex items-center justify-between border-b border-zinc-200 pb-3">
+                            <h3 class="font-black text-lg text-zinc-900">설명 (Summary)</h3>
+                            <div class="text-xs font-bold text-zinc-500">
+                                제작자: <span id="detailDeveloper" class="text-zinc-900 font-extrabold"></span>
+                            </div>
+                        </div>
+                        <p id="detailSummary" class="text-sm text-zinc-700 leading-relaxed font-medium">등록된 소개글이 없습니다.</p>
+                        
+                        <div class="pt-2 flex items-center gap-2">
+                            <span id="detailCategoryTag" class="text-xs font-black uppercase text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full">카테고리</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm space-y-6">
+                        <div class="space-y-1.5 border-b border-zinc-200 pb-4">
+                            <h1 id="detailTitle" class="text-3xl font-black text-zinc-900 tracking-tight leading-tight">작품 제목</h1>
+                            <p id="detailDate" class="text-xs text-zinc-500 font-semibold">등록일: -</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="text-[11px] font-black tracking-wider uppercase text-zinc-500">USER SCORE</div>
+                                    <div id="detailUserScoreText" class="text-xs font-black text-zinc-800">0개 유저 평가</div>
+                                </div>
+                                <div id="detailUserScoreBadge" class="user-badge-square score-none w-14 h-14 text-2xl shadow-md">?</div>
+                            </div>
+                            <div class="w-full bg-zinc-100 rounded-full h-2 overflow-hidden">
+                                <div id="detailUserBar" class="h-full bg-zinc-300 transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <button onclick="openWriteReviewModal()" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-extrabold text-sm py-3 rounded-xl flex items-center justify-center gap-2 transition shadow-sm">
+                                <i class="fa-solid fa-pen"></i> 내 리뷰 작성하기 (Add My Review)
+                            </button>
+                        </div>
+
+                        <div class="pt-4 border-t border-zinc-200 space-y-2">
+                            <div class="text-xs font-black uppercase text-zinc-500 tracking-wider">플레이하기</div>
+                            <a id="detailEntryUrl" href="#" target="_blank" class="w-full bg-black hover:bg-zinc-800 text-white font-black text-sm p-4 rounded-xl flex items-center justify-between transition shadow-md group">
+                                <span>엔트리에서 실행하기</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-xs group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition"></i>
+                            </a>
+                        </div>
+
+                        <button id="deleteProjectBtn" onclick="openDeleteConfirmModal()" class="w-full bg-red-50 hover:bg-red-100 text-[#FF6874] border border-red-200 font-bold text-xs py-2.5 rounded-lg hidden transition">
+                            <i class="fa-solid fa-trash-can"></i> 작품 등록 취소
+                        </button>
+                    </div>
+
+                    <div class="bg-zinc-50 border border-zinc-200 rounded-2xl p-5 space-y-3 shadow-sm">
+                        <h4 class="font-black text-sm text-zinc-900 border-b border-zinc-200 pb-2">점수 분포 (Score Breakdown)</h4>
+                        <div class="space-y-2.5 text-xs">
+                            <div>
+                                <div class="flex justify-between font-bold text-zinc-600 mb-1">
+                                    <span>호평 (75-100)</span>
+                                    <span id="pctPositive">0%</span>
+                                </div>
+                                <div class="w-full bg-zinc-200 rounded-full h-2 overflow-hidden">
+                                    <div id="barPositive" class="bg-[#00ce7a] h-full" style="width:0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between font-bold text-zinc-600 mb-1">
+                                    <span>복합적 (50-74)</span>
+                                    <span id="pctMixed">0%</span>
+                                </div>
+                                <div class="w-full bg-zinc-200 rounded-full h-2 overflow-hidden">
+                                    <div id="barMixed" class="bg-[#ffbd3f] h-full" style="width:0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between font-bold text-zinc-600 mb-1">
+                                    <span>비호평 (0-49)</span>
+                                    <span id="pctNegative">0%</span>
+                                </div>
+                                <div class="w-full bg-zinc-200 rounded-full h-2 overflow-hidden">
+                                    <div id="barNegative" class="bg-[#FF6874] h-full" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-4 pt-6 border-t border-zinc-200">
+                <h3 class="font-black text-xl text-zinc-900 flex items-center gap-2">사용자 리뷰 (User Reviews)</h3>
+                <div id="individualReviewsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 모달들 (작품등록, 리뷰작성, 로그인 등) -->
+    <div id="loginModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-zinc-300 w-full max-w-md rounded-2xl p-6 shadow-2xl text-zinc-900 relative">
+            <button onclick="closeLoginModal()" class="absolute right-4 top-4 text-zinc-400 hover:text-black">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <div class="text-center mb-6">
+                <h3 class="text-xl font-black text-black">로그인 / 회원가입</h3>
+                <p class="text-xs text-zinc-500 mt-1">간편하게 계정을 만들고 리뷰를 남겨보세요.</p>
+            </div>
+            <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">사용자 이름</label>
+                    <input type="text" id="authUsernameInput" required placeholder="예: 엔트리대장"
+                        class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black">
+                </div>
+                <button type="submit" class="w-full bg-black text-white font-black py-2.5 rounded-lg text-sm mt-4 hover:bg-zinc-800 transition">
+                    시작하기
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 작품 등록 모달 -->
+    <div id="newProjectModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-zinc-300 w-full max-w-lg rounded-2xl p-6 shadow-2xl text-zinc-900 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeNewProjectModal()" class="absolute right-4 top-4 text-zinc-400 hover:text-black">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 class="text-xl font-black text-black mb-4">엔트리 작품 등록</h3>
+            <form onsubmit="handleNewProjectSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">작품 제목</label>
+                    <input type="text" id="newProjTitle" required placeholder="예: 우주 대모험 RPG"
+                        class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">제작자명</label>
+                    <input type="text" id="newProjDev" required placeholder="예: 엔트리개발자"
+                        class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">카테고리</label>
+                    <select id="newProjCategory" class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black">
+                        <option value="게임">게임</option>
+                        <option value="생활과 도구">생활과 도구</option>
+                        <option value="스토리텔링">스토리텔링</option>
+                        <option value="예술">예술</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">엔트리 작품 링크 (URL)</label>
+                    <input type="url" id="newProjUrl" required placeholder="https://playentry.org/project/..."
+                        class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">작품 썸네일 이미지 링크 (URL)</label>
+                    <input type="url" id="newProjImage" required placeholder="https://images.unsplash.com/..."
+                        class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">작품 설명 (Summary)</label>
+                    <textarea id="newProjSummary" rows="3" required placeholder="작품에 대한 간단한 소개를 적어주세요."
+                        class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-metagreen text-black font-black py-3 rounded-lg text-sm hover:bg-emerald-400 transition shadow-sm">
+                    등록 완료
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 리뷰 작성 모달 -->
+    <div id="writeReviewModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-zinc-300 w-full max-w-md rounded-2xl p-6 shadow-2xl text-zinc-900 relative">
+            <button onclick="closeWriteReviewModal()" class="absolute right-4 top-4 text-zinc-400 hover:text-black">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 class="text-xl font-black text-black mb-4">내 리뷰 작성하기</h3>
+            <form onsubmit="handleReviewSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">평점 (0 ~ 100점)</label>
+                    <input type="number" id="reviewScoreInput" min="0" max="100" required placeholder="85"
+                        class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-700 mb-1">리뷰 내용</label>
+                    <textarea id="reviewCommentInput" rows="4" required placeholder="이 작품에 대한 솔직한 평가를 남겨주세요."
+                        class="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:border-black"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-black text-white font-black py-3 rounded-lg text-sm hover:bg-zinc-800 transition">
+                    리뷰 등록
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 스크립트 로직 (GAS 연동 포함) -->
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxL_OOzYxx7lVDvVNk9_tFqMGIPk_bppQEXVGrOCbXlCUTfrOn9UiqE_vgIlHtOICBb/exec";
+        
+        let appData = { projects: [], users: {} };
+        let currentUser = localStorage.getItem('entacritic_current_user') || null;
+        let currentFilter = '전체';
+        let currentSort = 'latest';
+        let currentSearchQuery = '';
+        let activeProjectId = null;
+
+        async function loadData() {
+            try {
+                const res = await fetch(GAS_URL);
+                const json = await res.json();
+                if (json && json.projects) {
+                    appData = json;
+                }
+            } catch (err) {
+                console.error("데이터 로드 실패:", err);
+                const local = localStorage.getItem('entacritic_fallback_data');
+                if (local) appData = JSON.parse(local);
+            }
+            renderApp();
+        }
+
+        async function saveData() {
+            localStorage.setItem('entacritic_fallback_data', JSON.stringify(appData));
+            try {
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: appData })
+                });
+            } catch (err) {
+                console.error("서버 백업 실패:", err);
+            }
+        }
+
+        function renderApp() {
+            renderAccount();
+            renderProjectsList();
+        }
+
+        function renderAccount() {
+            const container = document.getElementById('userAccountContainer');
+            if (currentUser) {
+                container.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-zinc-300">${currentUser}님</span>
+                        <button onclick="logout()" class="bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold px-2.5 py-1.5 rounded transition">로그아웃</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="openLoginModal()" class="bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">
+                        로그인 / 회원가입
+                    </button>
+                `;
+            }
+        }
+
+        function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); }
+        function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
+        
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('authUsernameInput').value.trim();
+            if (!username) return;
+            currentUser = username;
+            localStorage.setItem('entacritic_current_user', currentUser);
+            closeLoginModal();
+            renderApp();
+            alert(currentUser + "님 환영합니다!");
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('entacritic_current_user');
+            renderApp();
+        }
+
+        function openNewProjectModal() {
+            if (!currentUser) {
+                openLoginModal();
+                return;
+            }
+            document.getElementById('newProjectModal').classList.remove('hidden');
+        }
+        function closeNewProjectModal() { document.getElementById('newProjectModal').classList.add('hidden'); }
+
+        async function handleNewProjectSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('newProjTitle').value.trim();
+            const developer = document.getElementById('newProjDev').value.trim();
+            const category = document.getElementById('newProjCategory').value;
+            const entryUrl = document.getElementById('newProjUrl').value.trim();
+            const imageUrl = document.getElementById('newProjImage').value.trim();
+            const summary = document.getElementById('newProjSummary').value.trim();
+
+            const newProj = {
+                id: 'proj_' + Date.now(),
+                title, developer, category, entryUrl, imageUrl, summary,
+                date: new Date().toISOString().split('T')[0],
+                reviews: []
+            };
+
+            appData.projects.unshift(newProj);
+            await saveData();
+            closeNewProjectModal();
+            renderApp();
+            showHomePage();
+        }
+
+        function filterCategory(cat) {
+            currentFilter = cat;
+            document.getElementById('categoryLabel').innerText = '카테고리: ' + cat;
+            renderProjectsList();
+        }
+
+        function handleSortChange(sort) {
+            currentSort = sort;
+            renderProjectsList();
+        }
+
+        function handleSearch() {
+            currentSearchQuery = document.getElementById('searchInput').value.toLowerCase();
+            renderProjectsList();
+        }
+
+        function renderProjectsList() {
+            const grid = document.getElementById('projectsGrid');
+            let list = [...appData.projects];
+
+            if (currentFilter !== '전체') {
+                list = list.filter(p => p.category === currentFilter);
+            }
+
+            if (currentSearchQuery) {
+                list = list.filter(p => p.title.toLowerCase().includes(currentSearchQuery) || p.developer.toLowerCase().includes(currentSearchQuery));
+            }
+
+            list.sort((a, b) => {
+                if (currentSort === 'latest') return b.id.localeCompare(a.id);
+                if (currentSort === 'reviews') return b.reviews.length - a.reviews.length;
+                const scoreA = calcAvgScore(a);
+                const scoreB = calcAvgScore(b);
+                if (currentSort === 'highest') return scoreB - scoreA;
+                if (currentSort === 'lowest') return scoreA - scoreB;
+                return 0;
+            });
+
+            if (list.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-zinc-500 font-bold text-sm">등록된 작품이 없습니다.</div>`;
+                return;
+            }
+
+            grid.innerHTML = list.map(p => {
+                const avg = calcAvgScore(p);
+                const badgeClass = getScoreBadgeClass(avg);
+                const badgeText = p.reviews.length > 0 ? avg : '?';
+                return `
+                    <div onclick="openDetailPage('${p.id}')" class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group flex flex-col">
+                        <div class="h-44 w-full bg-zinc-100 overflow-hidden relative">
+                            <img src="${p.imageUrl}" onerror="this.src='https://placehold.co/400x300/e4e4e7/27272a?text=Entacritic'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        </div>
+                        <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                                <div class="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-1">${p.category}</div>
+                                <h3 class="font-black text-base text-zinc-900 line-clamp-1 group-hover:text-metagreen transition">${p.title}</h3>
+                                <p class="text-xs text-zinc-500 font-semibold mt-0.5">${p.developer}</p>
+                            </div>
+                            <div class="flex items-center justify-between pt-2 border-t border-zinc-100">
+                                <span class="text-[11px] font-bold text-zinc-500">평가 ${p.reviews.length}개</span>
+                                <div class="user-badge-square ${badgeClass} w-9 h-9 text-sm">${badgeText}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function calcAvgScore(proj) {
+            if (!proj.reviews || proj.reviews.length === 0) return 0;
+            const sum = proj.reviews.reduce((acc, r) => acc + r.score, 0);
+            return Math.round(sum / proj.reviews.length);
+        }
+
+        function getScoreBadgeClass(score) {
+            if (score === 0) return 'score-none';
+            if (score >= 75) return 'score-green';
+            if (score >= 50) return 'score-yellow';
+            return 'score-red';
+        }
+
+        function openDetailPage(id) {
+            activeProjectId = id;
+            const proj = appData.projects.find(p => p.id === id);
+            if (!proj) return;
+
+            document.getElementById('homePage').classList.add('hidden');
+            document.getElementById('detailPage').classList.remove('hidden');
+
+            document.getElementById('detailImage').src = proj.imageUrl;
+            document.getElementById('detailTitle').innerText = proj.title;
+            document.getElementById('detailDeveloper').innerText = proj.developer;
+            document.getElementById('detailSummary').innerText = proj.summary;
+            document.getElementById('detailCategoryTag').innerText = proj.category;
+            document.getElementById('detailDate').innerText = '등록일: ' + proj.date;
+            document.getElementById('detailEntryUrl').href = proj.entryUrl;
+
+            const avg = calcAvgScore(proj);
+            const badge = document.getElementById('detailUserScoreBadge');
+            badge.className = `user-badge-square ${getScoreBadgeClass(avg)} w-14 h-14 text-2xl shadow-md`;
+            badge.innerText = proj.reviews.length > 0 ? avg : '?';
+            document.getElementById('detailUserScoreText').innerText = `${proj.reviews.length}개 유저 평가`;
+            document.getElementById('detailUserBar').style.width = avg + '%';
+            document.getElementById('detailUserBar').className = `h-full transition-all duration-500 ${avg >= 75 ? 'bg-[#00ce7a]' : avg >= 50 ? 'bg-[#ffbd3f]' : 'bg-[#FF6874]'}`;
+
+            // 분포 계산
+            let pos = 0, mix = 0, neg = 0;
+            proj.reviews.forEach(r => {
+                if (r.score >= 75) pos++;
+                else if (r.score >= 50) mix++;
+                else neg++;
+            });
+            const total = proj.reviews.length || 1;
+            document.getElementById('pctPositive').innerText = Math.round((pos/total)*100) + '%';
+            document.getElementById('barPositive').style.width = Math.round((pos/total)*100) + '%';
+            document.getElementById('pctMixed').innerText = Math.round((mix/total)*100) + '%';
+            document.getElementById('barMixed').style.width = Math.round((mix/total)*100) + '%';
+            document.getElementById('pctNegative').innerText = Math.round((neg/total)*100) + '%';
+            document.getElementById('barNegative').style.width = Math.round((neg/total)*100) + '%';
+
+            // 리뷰 목록 렌더링
+            const revGrid = document.getElementById('individualReviewsGrid');
+            if (proj.reviews.length === 0) {
+                revGrid.innerHTML = `<div class="col-span-full text-zinc-500 font-bold text-xs py-4">아직 작성된 리뷰가 없습니다. 첫 리뷰를 남겨보세요!</div>`;
+            } else {
+                revGrid.innerHTML = proj.reviews.map(r => `
+                    <div class="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-xs text-zinc-800">${r.author}</span>
+                            <span class="user-badge-square ${getScoreBadgeClass(r.score)} w-8 h-8 text-xs">${r.score}</span>
+                        </div>
+                        <p class="text-xs text-zinc-600 font-medium">${r.comment}</p>
+                        <div class="text-[10px] text-zinc-400 text-right">${r.date}</div>
+                    </div>
+                `).join('');
+            }
+
+            const delBtn = document.getElementById('deleteProjectBtn');
+            if (currentUser) {
+                delBtn.classList.remove('hidden');
+            } else {
+                delBtn.classList.add('hidden');
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showHomePage() {
+            document.getElementById('detailPage').classList.add('hidden');
+            document.getElementById('homePage').classList.remove('hidden');
+            activeProjectId = null;
+            renderProjectsList();
+        }
+
+        function openWriteReviewModal() {
+            if (!currentUser) {
+                openLoginModal();
+                return;
+            }
+            document.getElementById('writeReviewModal').classList.remove('hidden');
+        }
+        function closeWriteReviewModal() { document.getElementById('writeReviewModal').classList.add('hidden'); }
+
+        async function handleReviewSubmit(e) {
+            e.preventDefault();
+            const score = parseInt(document.getElementById('reviewScoreInput').value);
+            const comment = document.getElementById('reviewCommentInput'].value.trim();
+
+            const proj = appData.projects.find(p => p.id === activeProjectId);
+            if (!proj) return;
+
+            proj.reviews.unshift({
+                author: currentUser,
+                score, comment,
+                date: new Date().toISOString().split('T')[0]
+            });
+
+            await saveData();
+            closeWriteReviewModal();
+            openDetailPage(activeProjectId);
+        }
+
+        async function openDeleteConfirmModal() {
+            if (confirm("정말로 이 작품을 등록 취소하시겠습니까?")) {
+                appData.projects = appData.projects.filter(p => p.id !== activeProjectId);
+                await saveData();
+                showHomePage();
+            }
+        }
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
